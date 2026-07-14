@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>巴塞→尼斯→巴黎→伦敦 8日行程地图</title>
+<meta name="description" content="2026.7.20-7.27 欧洲四城自由行">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg-primary:    #ffffff;
+  --bg-secondary:  #f5f5f7;
+  --bg-tertiary:   #fbfbfd;
+  --bg-grouped:    #f2f2f7;
+  --bg-elevated:   #ffffff;
+  --text-primary:   #1d1d1f;
+  --text-secondary: #86868b;
+  --text-tertiary:  #aeaeb2;
+  --accent:        #0071e3;
+  --accent-hover:  #0077ed;
+  --tint-red:    #ff3b30;
+  --tint-orange: #ff9500;
+  --tint-green:  #34c759;
+  --tint-blue:   #007aff;
+  --tint-purple: #af52de;
+  --tint-pink:   #ff2d55;
+  --separator:  rgba(60, 60, 67, .12);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:  0 4px 14px rgba(0,0,0,.08);
+  --shadow-lg:  0 8px 30px rgba(0,0,0,.12);
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+               "Helvetica Neue", "Arial", sans-serif;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.47059;
+  letter-spacing: -0.022em;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+#map { width: 100%; height: 40vh; min-height: 280px; position: sticky; top: 0; z-index: 100; }
+.locate-btn {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+  border: none; box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.locate-btn.active { color: #007aff; }
+@keyframes loc-pulse {
+  0%   { transform: scale(1); opacity: .55; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.loc-pulse {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(0,122,255,.25);
+  animation: loc-pulse 1.6s ease-out infinite;
+}
+.tabs {
+  display: flex; gap: 6px; padding: 12px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  background: rgba(255,255,255,.85); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px); position: sticky; top: 40vh; z-index: 99;
+  border-bottom: .5px solid var(--separator); scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex-shrink: 0; padding: 7px 16px; border-radius: 980px; border: none;
+  background: var(--bg-grouped); color: var(--text-secondary);
+  font-size: 14px; font-weight: 500; cursor: pointer; transition: all .25s ease;
+  white-space: nowrap; letter-spacing: -0.01em;
+}
+.tab:active { transform: scale(.96); }
+.tab.active { background: var(--accent); color: #fff; }
+.content { max-width: 680px; margin: 0 auto; padding: 16px 16px calc(24px + var(--safe-bottom)); }
+.hero { text-align: center; padding: 28px 20px 20px; }
+.hero h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.hero .subtitle { font-size: 17px; color: var(--text-secondary); margin-top: 6px; font-weight: 400; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.info-card { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm); }
+.info-card .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 6px; }
+.info-card .value { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.section-head { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; padding: 20px 0 8px; }
+.day-head { padding: 20px 0 12px; }
+.day-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.day-head p { font-size: 15px; color: var(--text-secondary); margin-top: 2px; }
+.route-bar { background: var(--bg-elevated); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow-sm); font-size: 13px; color: var(--text-secondary); line-height: 1.7; white-space: pre-line; }
+.route-bar strong { color: var(--text-primary); }
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before { content: ''; position: absolute; left: 7px; top: 20px; bottom: 20px; width: 1.5px; background: var(--separator); }
+.tl-item { position: relative; margin-bottom: 10px; }
+.tl-dot { position: absolute; left: -20px; top: 18px; width: 10px; height: 10px; border-radius: 50%; z-index: 1; box-shadow: 0 0 0 3px var(--bg-secondary); }
+.tl-dot.food    { background: var(--tint-red); }
+.tl-dot.spot    { background: var(--tint-blue); }
+.tl-dot.hotel   { background: var(--tint-orange); }
+.tl-dot.drink   { background: var(--tint-purple); }
+.tl-dot.transport { background: var(--text-tertiary); }
+.card { background: var(--bg-elevated); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm); transition: box-shadow .25s ease; cursor: pointer; }
+.card:active { box-shadow: var(--shadow-md); }
+.card .time { font-size: 12px; font-weight: 600; color: var(--text-tertiary); letter-spacing: .01em; }
+.card .name { font-size: 17px; font-weight: 600; margin: 2px 0 4px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; }
+.card .desc { font-size: 14px; color: var(--text-secondary); line-height: 1.45; }
+.badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
+.badge.food   { background: rgba(255,59,48,.1);  color: var(--tint-red); }
+.badge.spot   { background: rgba(0,122,255,.1);  color: var(--tint-blue); }
+.badge.drink  { background: rgba(175,82,222,.1); color: var(--tint-purple); }
+.budget { display: inline-block; margin-top: 6px; padding: 3px 10px; background: var(--bg-grouped); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.pays { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.pay { font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+.pay.ok  { background: rgba(52,199,89,.1);  color: var(--tint-green); }
+.pay.no  { background: rgba(255,59,48,.08); color: var(--tint-red); }
+.pay.idk { background: rgba(255,149,0,.1);  color: var(--tint-orange); }
+.links { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; border: none; cursor: pointer;
+  text-decoration: none !important; transition: filter .2s;
+}
+.btn:active { filter: brightness(.9); }
+.btn.nav    { background: var(--accent); color: #fff; }
+.btn.xhs    { background: #ff2442; color: #fff; }
+.btn.dp     { background: #ffa700; color: #fff; }
+.btn.rsv    { background: var(--tint-green); color: #fff; }
+.as-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.35); backdrop-filter: blur(2px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.as-overlay.show { opacity: 1; pointer-events: auto; }
+.as-sheet {
+  width: 100%; max-width: 420px;
+  padding: 0 8px 34px;
+  transform: translateY(100%); transition: transform .3s cubic-bezier(.22,1,.36,1);
+}
+.as-overlay.show .as-sheet { transform: translateY(0); }
+.as-group {
+  background: rgba(255,255,255,.88); backdrop-filter: blur(20px);
+  border-radius: 14px; overflow: hidden; margin-bottom: 8px;
+}
+.as-group .as-item {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 16px; font-size: 18px; color: #007aff; font-weight: 500;
+  border: none; background: none; width: 100%; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.as-group .as-item + .as-item { border-top: .5px solid rgba(0,0,0,.12); }
+.as-group .as-item:active { background: rgba(0,0,0,.06); }
+.as-cancel { font-weight: 600; }
+.details {
+  margin-top: 10px; padding-top: 10px;
+  border-top: .5px solid var(--separator);
+  font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+}
+.details.closed { display: none; }
+.day-list .card { margin-bottom: 8px; }
+.day-list .card .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.pay-summary { background: var(--bg-elevated); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm); font-size: 13px; line-height: 1.7; margin-bottom: 10px; }
+.pay-summary h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.pay-summary .warn { color: var(--tint-red); }
+.pay-summary .ok-text { color: var(--tint-green); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 8px 0; font-size: 12px; color: var(--text-secondary); }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.leaflet-popup-content-wrapper { border-radius: var(--radius-md) !important; box-shadow: var(--shadow-lg) !important; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important; }
+.leaflet-popup-content { font-size: 14px !important; line-height: 1.5 !important; margin: 12px 14px !important; }
+.leaflet-popup-content a { color: var(--accent) !important; }
+.leaflet-popup-tip { background: #fff !important; }
+.leaflet-control-zoom a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; border-radius: 10px !important; background: rgba(255,255,255,.85) !important; -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; border: .5px solid var(--separator) !important; color: var(--text-primary) !important; }
+.leaflet-control-zoom { border-radius: 12px !important; overflow: hidden; box-shadow: var(--shadow-md) !important; border: none !important; }
+.leaflet-control-attribution { font-size: 9px !important; opacity: .5; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div class="tabs" id="tabs"></div>
+<div class="content" id="content"></div>
+
+<script>
+const HOTEL = { name: '', lat: 0, lng: 0 };
+
+const DAYS = [
+  { id: 0, label: '总览', color: '#0071e3', locations: [] },
+  {
+    id: 1, label: 'D1 巴塞', date: '7/20（一）', title: '到达+圣家堂', color: '#ff9500',
+    locations: [
+      { name: 'BCN 机场 T1', lat: 41.2971, lng: 2.0785, type: 'transport', time: '13:15', desc: '✈️ 到达，过海关+取行李约50-75min', gmap: 'Barcelona+El+Prat+Airport' },
+      { name: 'C. Castillejos 285', lat: 41.4046, lng: 2.1804, type: 'hotel', time: '14:50', desc: 'Eixample 区民宿，步行到圣家堂15min', detail: 'Aerobús A1（€6.75）→ Plaça Catalunya → 地铁2号线/打车', gmap: 'Carrer+de+los+Castillejos+285+Barcelona' },
+      { name: '圣家堂 ⭐', lat: 41.4036, lng: 2.1744, type: 'spot', time: '16:30', desc: '已买票，不可迟到！游览约1.5h', detail: '入口在诞生立面（Carrer de Marina 侧），夏季营业到20:00', gmap: 'Sagrada+Família+Barcelona', reserve: 'https://www.sagradafamilia.org/' },
+      { name: '亲吻墙', lat: 41.3849, lng: 2.1805, type: 'spot', time: '18:00', desc: 'El Món per la Pau · 4000张照片拼成的吻，免费', gmap: 'Plaça+d\'Isidre+Boada+Barcelona' },
+      { name: 'Jon Cake', lat: 41.3845, lng: 2.1825, type: 'food', time: '18:30', desc: '巴斯克芝士蛋糕专门店，€5-6/片', gmap: 'Jon+Cake+Barcelona' },
+      { name: 'Nomad Coffee', lat: 41.3850, lng: 2.1825, type: 'drink', time: '19:00', desc: '精品咖啡，Born 区分店', gmap: 'Nomad+Coffee+El+Born+Barcelona' },
+      { name: '晚餐 · Born/哥特区', lat: 41.3855, lng: 2.1810, type: 'food', time: '19:30', desc: 'El Xampanyet（tapas）/ La Viña del Born（蛋糕）', detail: '人均€15-25', gmap: 'El+Xampanyet+Barcelona' },
+    ]
+  },
+  {
+    id: 2, label: 'D2 巴塞', date: '7/21（二）', title: '诺坎普+Tibidabo', color: '#34c759',
+    locations: [
+      { name: '诺坎普 Camp Nou', lat: 41.3809, lng: 2.1228, type: 'spot', time: '10:00', desc: 'Barça Immersive Tour · €28-31', detail: '地铁 L5→L9S→Les Corts，25min。装修期间开放博物馆+360°沉浸体验', gmap: 'Camp+Nou+Barcelona', reserve: 'https://www.fcbarcelona.com/' },
+      { name: 'Tibidabo 山', lat: 41.4216, lng: 2.1186, type: 'spot', time: '13:00', desc: '圣心教堂（免费）+ 360°巴塞全景 + 日落约21:00', detail: '地铁 L7→Av. Tibidabo→T2A 巴士上山。☀️ 天气敏感，下雨备选 MNAC', gmap: 'Tibidabo+Barcelona' },
+      { name: 'Park Güell（备选）', lat: 41.4145, lng: 2.1527, type: 'spot', time: '—', desc: '高迪作品，需提前买票€18/人', gmap: 'Park+Güell+Barcelona' },
+      { name: 'Cervecería Catalana', lat: 41.3930, lng: 2.1580, type: 'food', time: '19:30', desc: '晚餐 · Eixample 本地人爱去的tapas店', detail: 'Carrer de Mallorca, 236。永远排队但值得，人均€20-30', gmap: 'Cervecería+Catalana+Barcelona' },
+    ]
+  },
+  {
+    id: 3, label: 'D3 转场', date: '7/22（三）', title: '高迪双宅→飞尼斯', color: '#007aff',
+    locations: [
+      { name: 'Casa Batlló', lat: 41.3916, lng: 2.1650, type: 'spot', time: '09:30', desc: '高迪代表作，€35-45，游览约1.5h', detail: 'Passeig de Gràcia, 43 · 建议提前买时段票', gmap: 'Casa+Batlló+Barcelona', reserve: 'https://casabatllo.es/' },
+      { name: 'Casa Milà', lat: 41.3954, lng: 2.1618, type: 'spot', time: '11:30', desc: '米拉之家，€25-30，游览约1h', detail: 'Passeig de Gràcia, 92 · 步行2min', gmap: 'Casa+Milà+La+Pedrera+Barcelona', reserve: 'https://www.lapedrera.com/' },
+      { name: 'BCN 机场 T1', lat: 41.2971, lng: 2.0785, type: 'transport', time: '17:00', desc: 'Aerobús A1（€6.75，35min）→ 机场', detail: '提前回酒店取行李→ Plaça Catalunya 坐大巴', gmap: 'Barcelona+El+Prat+Airport' },
+      { name: '✈️ 20:20→21:45', lat: 41.2971, lng: 2.0785, type: 'transport', time: '20:20', desc: 'BCN→NCE · Vueling/廉航', gmap: 'Barcelona+El+Prat+Airport' },
+      { name: '24 Rue des Potiers', lat: 43.6975, lng: 7.2830, type: 'hotel', time: '22:30', desc: '尼斯老城民宿 · 近 Garibaldi', detail: 'Tram L2：机场→Grand Arénas（先免费坐1站）→买 La Carte €2 + €1.70 → Garibaldi 站下步行3min', gmap: '24+Rue+des+Potiers+Nice' },
+    ]
+  },
+  {
+    id: 4, label: 'D4 东线', date: '7/23（四）', title: '芒通+摩纳哥', color: '#af52de',
+    locations: [
+      { name: 'Nice-Ville 站', lat: 43.7047, lng: 7.2620, type: 'transport', time: '09:30', desc: '出发去芒通，Tram L1 可达', detail: '买票后在黄色打孔机上验证（composter），忘了罚€50+', gmap: 'Gare+de+Nice+Ville' },
+      { name: '芒通 Menton', lat: 43.7747, lng: 7.5020, type: 'spot', time: '10:00', desc: '黄粉色老城 + 海滨步道 · TER 35min', detail: 'Basilique Saint-Michel + 老城海滨午餐', gmap: 'Menton+France' },
+      { name: '摩纳哥 Monaco', lat: 43.7384, lng: 7.4246, type: 'spot', time: '12:00', desc: '蒙特卡洛赌场广场 + 王子宫 · TER 15min', detail: '赌场进去需€17+正装，F1赛道港口游艇', gmap: 'Monte+Carlo+Monaco' },
+      { name: '城堡山', lat: 43.6945, lng: 7.2780, type: 'spot', time: '15:00', desc: 'Colline du Château · 360°尼斯全景 + 天使湾，免费', gmap: 'Colline+du+Château+Nice' },
+      { name: 'Cours Saleya 市场', lat: 43.6955, lng: 7.2760, type: 'spot', time: '16:00', desc: '鲜花蔬果市场，到17:00', gmap: 'Cours+Saleya+Nice' },
+      { name: 'Chez Acchiardo', lat: 43.6970, lng: 7.2810, type: 'food', time: '19:00', desc: '晚餐 · 尼斯传统菜，老城', detail: 'Rue Pairolière 或 La Merenda（Rue de la Terrasse）', gmap: 'Chez+Acchiardo+Nice' },
+    ]
+  },
+  {
+    id: 5, label: 'D5 西线', date: '7/24（五）', title: '昂蒂布+戛纳', color: '#ff2d55',
+    locations: [
+      { name: 'Nice-Ville 站', lat: 43.7047, lng: 7.2620, type: 'transport', time: '09:30', desc: '出发去昂蒂布', gmap: 'Gare+de+Nice+Ville' },
+      { name: '昂蒂布 Antibes', lat: 43.5808, lng: 7.1238, type: 'spot', time: '10:00', desc: '毕加索博物馆（€8）+ 老城海港 · TER 20min', gmap: 'Antibes+France' },
+      { name: '戛纳 Cannes', lat: 43.5528, lng: 7.0174, type: 'spot', time: '12:00', desc: '影节宫红毯 + La Croisette 海滨大道 + Le Suquet老城 · TER 15min', detail: '午餐推荐 Le Suquet 老城餐厅', gmap: 'Cannes+France' },
+      { name: '马蒂斯博物馆（备选）', lat: 43.7190, lng: 7.2760, type: 'spot', time: '—', desc: 'Musée Matisse · Cimiez 区，€10', gmap: 'Musée+Matisse+Nice' },
+      { name: '尼斯海滩', lat: 43.6930, lng: 7.2680, type: 'spot', time: '16:00', desc: 'Promenade des Anglais · 免费海滩/付费海滩', gmap: 'Promenade+des+Anglais+Nice' },
+    ]
+  },
+  {
+    id: 6, label: 'D6 巴黎', date: '7/25（六）', title: '歌剧院+奥赛+铁塔', color: '#ff9500',
+    locations: [
+      { name: 'NCE 机场 T2', lat: 43.6605, lng: 7.2149, type: 'transport', time: '08:00', desc: '⏰ 07:30退房→Tram L2 25min到机场', gmap: 'Nice+Côte+d\'Azur+Airport' },
+      { name: 'ORY 机场 T3', lat: 48.7262, lng: 2.3659, type: 'transport', time: '11:15', desc: '✈️ 09:45→11:15 NCE→ORY', detail: 'Metro 14 → Madeleine 站（25min直达）售票机买 Navigo Easy €2 + 机场票€14', gmap: 'Paris+Orly+Airport' },
+      { name: '9 rue Vignon, 75008', lat: 48.8710, lng: 2.3237, type: 'hotel', time: '11:45', desc: 'Madeleine 区·11:00可入住,步行到歌剧院5min', gmap: '9+rue+Vignon+Paris+75008' },
+      { name: '歌剧院 Garnier', lat: 48.8719, lng: 2.3319, type: 'spot', time: '13:00', desc: '金碧辉煌，€14，游览约1h', gmap: 'Palais+Garnier+Paris' },
+      { name: '奥赛博物馆', lat: 48.8600, lng: 2.3266, type: 'spot', time: '14:35', desc: '印象派殿堂 · 周一闭馆所以今天去', detail: '从歌剧院步行20min或地铁，€16', gmap: 'Musée+d\'Orsay+Paris' },
+      { name: '亚历山大三世桥', lat: 48.8637, lng: 2.3136, type: 'spot', time: '16:30', desc: '塞纳河上最美桥，拍照', gmap: 'Pont+Alexandre+III+Paris' },
+      { name: '埃菲尔铁塔 ⭐', lat: 48.8584, lng: 2.2945, type: 'spot', time: '22:00', desc: '整点闪灯5min · 战神广场看', detail: '沿塞纳河散步到铁塔，晚餐在 Rue Saint-Dominique 或 Café de l\'Homme', gmap: 'Eiffel+Tower+Paris' },
+      { name: 'Café de l\'Homme', lat: 48.8620, lng: 2.2870, type: 'food', time: '20:00', desc: 'Trocadéro 正对铁塔，景观无敌，人均€40+', gmap: 'Café+de+l\'Homme+Paris' },
+    ]
+  },
+  {
+    id: 7, label: 'D7 迪士尼', date: '7/26（日）', title: '双园全天', color: '#ff3b30',
+    locations: [
+      { name: 'Auber 站（RER A）', lat: 48.8720, lng: 2.3300, type: 'transport', time: '08:30', desc: '从酒店步行5min，RER A 35min到迪士尼，€5/人单程', detail: '记得保留票根出站用', gmap: 'Auber+RER+Station+Paris' },
+      { name: '迪士尼乐园', lat: 48.8674, lng: 2.7830, type: 'spot', time: '09:30', desc: '双园票已买！建议上午 Studio 下午 Park', detail: '必玩：Big Thunder Mountain / Space Mountain / Ratatouille。烟花通常在22:00', gmap: 'Disneyland+Paris', reserve: 'https://www.disneylandparis.com/' },
+      { name: 'Bouillon Pigalle', lat: 48.8820, lng: 2.3370, type: 'food', time: '20:00', desc: '晚餐 · 平价法餐，人均€15-25', detail: '或在玛黑区吃falafel/Bistro', gmap: 'Bouillon+Pigalle+Paris' },
+    ]
+  },
+  {
+    id: 8, label: 'D8 回程', date: '7/27（一）', title: '老佛爷+卢浮宫→伦敦', color: '#0071e3',
+    locations: [
+      { name: '老佛爷百货', lat: 48.8730, lng: 2.3280, type: 'spot', time: '11:10', desc: '买 Longchamp！步行10min，退税12%', detail: '11:00退房→行李寄存酒店到14:00→步行到老佛爷。周一到周六10:00-20:00开门', gmap: 'Galeries+Lafayette+Haussmann+Paris' },
+      { name: '卢浮宫 ⭐', lat: 48.8606, lng: 2.3376, type: 'spot', time: '12:40', desc: '周一开门（周二闭馆）！€17，蒙娜丽莎+维纳斯', detail: '从老佛爷步行15min，逛到13:30', gmap: 'Louvre+Museum+Paris', reserve: 'https://www.louvre.fr/' },
+      { name: 'Gare du Nord', lat: 48.8809, lng: 2.3553, type: 'transport', time: '14:20', desc: 'Metro 12（€2.55）10min 到北站', detail: '14:00回酒店取行李→地铁→北站内有餐厅可等', gmap: 'Gare+du+Nord+Paris' },
+      { name: '🚄 21:12→22:30', lat: 48.8809, lng: 2.3553, type: 'transport', time: '21:12', desc: '欧洲之星已买 → London St Pancras', detail: '提前45min check-in，含英法海关', gmap: 'Gare+du+Nord+Paris' },
+      { name: 'London St Pancras', lat: 51.5300, lng: -0.1250, type: 'transport', time: '22:30', desc: '到达伦敦目的地', gmap: 'St+Pancras+International+London' },
+    ]
+  }
+];
+
+function overviewContent() {
+  return `
+<div class="hero"><h1>🇪🇸🇫🇷🇬🇧 巴塞→尼斯→巴黎→伦敦</h1><p class="subtitle">2026.7.20（一）— 7.27（一）· 8天4城 · 两人</p></div>
+<div class="info-grid">
+  <div class="info-card"><div class="label">🏨 住宿</div><div class="value">巴塞 Eixample<br>尼斯 老城<br>巴黎 Madeleine</div></div>
+  <div class="info-card"><div class="label">✈️ 航班</div><div class="value">D1 LHR 09:55→BCN 13:15<br>D3 BCN 20:20→NCE 21:45<br>D6 NCE 09:45→ORY 11:15</div></div>
+  <div class="info-card"><div class="label">🚃 交通卡</div><div class="value">BCN: Hola BCN 2日 €18.70<br>NCE: La Carte €2+10次€10<br>PAR: Navigo Easy €2+机场€14</div></div>
+  <div class="info-card"><div class="label">💰 交通预算</div><div class="value">~€90‑100/人<br>（不含已买机票/欧洲之星）</div></div>
+</div>
+<div class="pay-summary">
+  <h4>📋 已买</h4>
+  ✅ 圣家堂 7/20 16:30 · ✅ 迪士尼双园 7/26 · ✅ 欧洲之星 7/27 21:12<br>
+  <h4>⚠️ 建议提前买</h4>
+  诺坎普 ⚡ 巴特罗之家 ⚡ 米拉之家 ⚡ 铁塔登顶（可选）
+</div>
+<div class="pay-summary">
+  <h4>🔑 交通验证规则</h4>
+  <span class="warn">巴塞：</span>地铁闸机插票/刷卡 → 闸门开<br>
+  <span class="warn">尼斯：</span>电车在站台机器打票（听到"咔嗒"声）<br>
+  <span class="warn">TER火车：</span>黄色打孔机插入票验证，忘了罚€50+<br>
+  <span class="warn">巴黎：</span>Navigo 卡放验票机 → 滴 → 闸门开<br>
+  <span class="ok-text">巴黎机场票：</span>14号线直达 Madeleine 站，€14/人
+</div>
+<div class="section-head">8天行程概览</div>
+<div class="day-list">${DAYS.slice(1).map(d=>`<div class="card" onclick="go(${d.id})"><div class="name"><span class="dot" style="background:${d.color}"></span>${d.label} · ${d.title}</div><div class="desc">${d.date}</div></div>`).join('')}</div>
+<div class="section-head">图例</div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--tint-red)"></div>餐厅</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--tint-blue)"></div>景点</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--tint-purple)"></div>酒吧</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--tint-orange)"></div>酒店</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--text-tertiary)"></div>交通</div>
+</div>`;
+}
+
+// ══════════ ENGINE — Do not modify below ══════════
+
+const map = L.map('map', { center: [43.0, 4.0], zoom: 5, zoomControl: false, attributionControl: true });
+L.control.zoom({ position: 'topright' }).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+
+const LocateControl = L.Control.extend({
+  options: { position: 'bottomright' },
+  onAdd() {
+    const btn = L.DomUtil.create('button', 'locate-btn');
+    btn.innerHTML = '📍';
+    btn.title = '我的位置';
+    L.DomEvent.disableClickPropagation(btn);
+    btn.addEventListener('click', () => {
+      btn.classList.add('active');
+      map.locate({ setView: true, maxZoom: 15 });
+    });
+    this._btn = btn;
+    return btn;
+  }
+});
+new LocateControl().addTo(map);
+let locMarker, locCircle;
+map.on('locationfound', e => {
+  const r = e.accuracy / 2;
+  if (locMarker) { locMarker.setLatLng(e.latlng); locCircle.setLatLng(e.latlng).setRadius(r); }
+  else {
+    locMarker = L.marker(e.latlng, {
+      icon: L.divIcon({ className:'', html:'<div style="width:14px;height:14px;border-radius:50%;background:#007aff;border:2.5px solid #fff;box-shadow:0 0 6px rgba(0,122,255,.5)"></div><div class="loc-pulse" style="position:absolute;top:0;left:0"></div>', iconSize:[14,14], iconAnchor:[7,7] }),
+      zIndexOffset: 2000
+    }).addTo(map);
+    locCircle = L.circle(e.latlng, { radius: r, color: '#007aff', fillColor: '#007aff', fillOpacity: .08, weight: 1 }).addTo(map);
+  }
+});
+map.on('locationerror', () => {});
+
+function icon(color, emoji) {
+  return L.divIcon({ className: '', html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.18)">${emoji||''}</div>`, iconSize: [28,28], iconAnchor: [14,14], popupAnchor: [0,-16] });
+}
+
+let markers = [], polylines = [];
+const emojis = { food:'🍽️', spot:'📍', hotel:'🏨', transport:'🚃', drink:'🍺' };
+
+function clearMap() { markers.forEach(m=>map.removeLayer(m)); polylines.forEach(p=>map.removeLayer(p)); markers=[]; polylines=[]; }
+
+function showDay(idx) {
+  clearMap();
+  if (idx === 0) {
+    const pts = [];
+    DAYS.forEach(d => d.locations.forEach(l => { if(l.lat) pts.push([l.lat,l.lng]); }));
+    if(pts.length) map.fitBounds(pts, {padding:[30,30]});
+    DAYS.slice(1).forEach(d => {
+      d.locations.filter(l=>l.time!=='—').forEach(l => {
+        const m = L.circleMarker([l.lat,l.lng], { radius:4, fillColor:d.color, color:'#fff', weight:1.5, fillOpacity:.9 }).addTo(map).bindPopup(`<b>${l.name}</b><br><span style="color:#86868b">${d.label}</span>`);
+        markers.push(m);
+      });
+    });
+    return;
+  }
+  const day = DAYS.find(d=>d.id===idx);
+  if(!day) return;
+  const coords = [];
+  day.locations.forEach(l => {
+    if(!l.lat) return;
+    const m = L.marker([l.lat,l.lng], { icon: icon(day.color, emojis[l.type]||'📌') }).addTo(map);
+    const gmapQ = l.gmap||encodeURIComponent(l.name+' Europe');
+    m.bindPopup(`<b>${l.name}</b>${l.time!=='—'?'<br><span style="color:#86868b">'+l.time+'</span>':''}<br>${l.desc}${l.budget?'<br><span style="color:#ff9500">'+l.budget+'</span>':''}<br><a href="#" onclick="event.preventDefault();openAS('${l.name.replace(/'/g,"\\'")}',${l.lat},${l.lng},'${gmapQ}')">📍 导航</a>`);
+    markers.push(m);
+    if(l.time!=='—') coords.push([l.lat,l.lng]);
+  });
+  if(coords.length>1) { const pl = L.polyline(coords, { color:day.color, weight:2.5, opacity:.5, dashArray:'6,5' }).addTo(map); polylines.push(pl); }
+  if(coords.length) map.fitBounds(coords, { padding:[40,40], maxZoom:14 });
+}
+
+// ══════════ RENDER ══════════
+function payChips(pay) {
+  if(!pay) return '';
+  let h = '<div class="pays">';
+  const m = { cash:'💴', card:'💳', suica:'Suica', paypay:'PayPay', alipay:'支付宝', wechat:'微信' };
+  for(const [k,label] of Object.entries(m)) {
+    if(pay[k]!==undefined) { const c = pay[k]===1?'ok':pay[k]===0.5?'idk':'no'; h += `<span class="pay ${c}">${label}</span>`; }
+  }
+  return h+'</div>';
+}
+
+const IN_APP_WEBVIEW = (() => {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  return /micromessenger|xhs|xhsdiscover|discover\/|tiktok|aweme|weibo|qq\/|qqbrowser|alipayclient|dingtalk|lark|feishu|ucbrowser|baiduboxapp|toutiao|newsarticle/.test(ua);
+})();
+
+function xhsKeyword(loc) {
+  if(loc.xhsKeyword) return loc.xhsKeyword.trim();
+  return (loc.name||'').replace(/⭐.*$/g,'').replace(/（.*?）/g,'').replace(/\(.*?\)/g,'').replace(/\s+/g,' ').trim();
+}
+function xhsAppUrl(loc) { return `xhsdiscover://search/result?keyword=${encodeURIComponent(xhsKeyword(loc))}&target_search=notes&source=deeplink`; }
+function xhsWebUrl(loc) { return `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(xhsKeyword(loc))}&source=web_explore_feed`; }
+
+function dpKeyword(loc) {
+  if(loc.dianpingKeyword) return loc.dianpingKeyword.trim();
+  return (loc.name||'').replace(/⭐.*$/g,'').replace(/（.*?）/g,'').replace(/\(.*?\)/g,'').replace(/\s+/g,' ').trim();
+}
+function dpAppUrl(loc) { return `dianping://searchshoplist?keyword=${encodeURIComponent(dpKeyword(loc))}`; }
+function dpWebUrl(loc) { return `https://m.dianping.com/searchshop?keyword=${encodeURIComponent(dpKeyword(loc))}`; }
+
+window._extLocs = {};
+DAYS.forEach(d => d.locations.forEach(l => { window._extLocs[`${d.id}::${l.name}`] = l; }));
+window._xhsLocs = window._extLocs;
+
+function openExt(key, kind) {
+  const loc = window._extLocs[key]; if(!loc) return false;
+  if (IN_APP_WEBVIEW) {
+    window.location.href = kind==='dp' ? dpWebUrl(loc) : xhsWebUrl(loc);
+  } else {
+    window.location.href = kind==='dp' ? dpAppUrl(loc) : xhsAppUrl(loc);
+  }
+  return false;
+}
+function openXhs(key) { return openExt(key, 'xhs'); }
+function openDp(key)  { return openExt(key, 'dp'); }
+
+function locCard(loc, dayIdx) {
+  const dot = loc.type==='food'?'food':loc.type==='spot'?'spot':loc.type==='drink'?'drink':loc.type==='hotel'?'hotel':'transport';
+  const bdg = loc.type==='food'?'<span class="badge food">餐</span>':loc.type==='spot'?'<span class="badge spot">景</span>':loc.type==='drink'?'<span class="badge drink">饮</span>':'';
+  const uid = `d${dayIdx}-${loc.name.replace(/\W/g,'')}`;
+  const locKey = `${dayIdx}::${loc.name}`;
+  const gmapQ = loc.gmap||encodeURIComponent(loc.name+' Europe');
+  let lnk = `<button class="btn nav" onclick="openAS('${loc.name.replace(/'/g,"\\'")}',${loc.lat},${loc.lng},'${gmapQ}')">📍 导航</button>`;
+  if(loc.xhs||loc.xhsKeyword) {
+    const xhsHref = IN_APP_WEBVIEW ? xhsWebUrl(loc) : xhsAppUrl(loc);
+    const xhsLabel = IN_APP_WEBVIEW ? '📕 小红书' : '📕 小红书 App';
+    lnk += `<a href="${xhsHref}" onclick="return openXhs('${locKey.replace(/'/g,"\\'")}')" class="btn xhs">${xhsLabel}</a>`;
+  }
+  const dpEnabled = loc.dianping !== false &&
+    (loc.dianping || loc.dianpingKeyword || loc.type==='food' || loc.type==='drink');
+  if(dpEnabled) {
+    const dpHref = IN_APP_WEBVIEW ? dpWebUrl(loc) : dpAppUrl(loc);
+    const dpLabel = IN_APP_WEBVIEW ? '🍜 大众点评' : '🍜 大众点评 App';
+    lnk += `<a href="${dpHref}" onclick="return openDp('${locKey.replace(/'/g,"\\'")}')" class="btn dp">${dpLabel}</a>`;
+  }
+  if(loc.reserve) lnk += `<a href="${loc.reserve}" target="_blank" class="btn rsv">📅 预约</a>`;
+  return `<div class="tl-item"><div class="tl-dot ${dot}"></div><div class="card" onclick="if(!event.target.closest('.btn,.links'))toggle('${uid}')"><div class="time">${loc.time!=='—'?loc.time:'备选'}</div><div class="name">${bdg} ${loc.name}</div><div class="desc">${loc.desc}</div>${loc.budget?'<div class="budget">'+loc.budget+'</div>':''}${payChips(loc.pay)}<div class="links">${lnk}</div>${loc.detail?'<div class="details" id="'+uid+'">'+loc.detail.replace(/\n/g,'<br>')+'</div>':''}</div></div>`;
+}
+
+function renderDay(idx) {
+  const d = DAYS.find(x=>x.id===idx); if(!d) return '';
+  const main = d.locations.filter(l=>l.time!=='—');
+  const alt = d.locations.filter(l=>l.time==='—');
+  let h = `<div class="day-head"><h2>${d.title}</h2><p>${d.date}</p></div>`;
+  if(main.length) { h += '<div class="section-head">行程</div><div class="timeline">'; main.forEach(l => h += locCard(l, idx)); h += '</div>'; }
+  if(alt.length) { h += '<div class="section-head">备选</div><div class="timeline">'; alt.forEach(l => h += locCard(l, idx)); h += '</div>'; }
+  return h;
+}
+
+// ══════════ NAV ══════════
+let cur = 0;
+const tabsEl = document.getElementById('tabs');
+const contentEl = document.getElementById('content');
+
+DAYS.forEach(d => {
+  const btn = document.createElement('button');
+  btn.className = 'tab' + (d.id===0?' active':'');
+  btn.dataset.day = d.id;
+  btn.textContent = d.label;
+  tabsEl.appendChild(btn);
+});
+
+function go(idx) {
+  cur = idx;
+  tabsEl.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', +t.dataset.day===idx));
+  contentEl.innerHTML = idx===0 ? overviewContent() : renderDay(idx);
+  showDay(idx);
+  contentEl.scrollTo({top:0});
+  const tab = tabsEl.querySelector(`[data-day="${idx}"]`);
+  if(tab) tab.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+}
+
+function toggle(id) { const el=document.getElementById(id); if(el) el.classList.toggle('closed'); }
+
+tabsEl.addEventListener('click', e => { const t=e.target.closest('.tab'); if(t) go(+t.dataset.day); });
+
+go(0);
+
+const asOverlay = document.createElement('div');
+asOverlay.className = 'as-overlay';
+asOverlay.innerHTML = `<div class="as-sheet">
+  <div class="as-group" id="as-opts"></div>
+  <div class="as-group"><button class="as-item as-cancel" onclick="closeAS()">取消</button></div>
+</div>`;
+document.body.appendChild(asOverlay);
+asOverlay.addEventListener('click', e => { if (e.target === asOverlay) closeAS(); });
+
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+function amapAppUrl(name, lat, lng) {
+  const scheme = IS_IOS ? 'iosamap' : 'androidamap';
+  return `${scheme}://viewMap?sourceApplication=trip&poiname=${encodeURIComponent(name)}&lat=${lat}&lon=${lng}&dev=0`;
+}
+function amapWebUrl(name, lat, lng) {
+  return `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(name)}&src=trip&coordinate=wgs84&callnative=1`;
+}
+function openAmap(name, lat, lng) {
+  if (IN_APP_WEBVIEW) { window.open(amapWebUrl(name, lat, lng)); return; }
+  window.location.href = amapAppUrl(name, lat, lng);
+}
+
+function openAS(name, lat, lng, gmap) {
+  const q = gmap || encodeURIComponent(name + ' Europe');
+  const encName = encodeURIComponent(name);
+  const safeName = name.replace(/'/g,"\\'");
+  const appleUrl = IN_APP_WEBVIEW
+    ? `https://maps.apple.com/?q=${lat},${lng}&ll=${lat},${lng}&name=${encName}`
+    : `maps://maps.apple.com/?q=${lat},${lng}&name=${encName}`;
+  const googleUrl = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  document.getElementById('as-opts').innerHTML =
+    `<button class="as-item" onclick="window.open('${appleUrl}');closeAS()">🍎 Apple Maps</button>` +
+    `<button class="as-item" onclick="window.open('${googleUrl}');closeAS()">🗺️ Google Maps</button>` +
+    `<button class="as-item" onclick="openAmap('${safeName}',${lat},${lng});closeAS()">🧭 高德地图 App</button>`;
+  asOverlay.classList.add('show');
+}
+function closeAS() { asOverlay.classList.remove('show'); }
+</script>
+</body>
+</html>
